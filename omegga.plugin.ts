@@ -4,7 +4,10 @@ import {
   applyTable,
   differenceTable,
   inversionTable,
+  olookup,
+  orelative,
   orientationStr,
+  orotate,
   vecAbs,
   vecScale,
   vecSub,
@@ -13,7 +16,7 @@ import { decodeDoorState, DoorState, encodeDoorState } from 'src/state';
 import 'src/test';
 
 const {
-  BRICK_CONSTANTS: { orientationMap, rotationTable, translationTable },
+  BRICK_CONSTANTS: { orientationMap },
   d2o,
   getBrickSize,
 } = OMEGGA_UTIL.brick;
@@ -37,11 +40,30 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
   async init() {
     this.omegga.on('cmd:g', async (name: string) => {
-      const g = await this.omegga.getPlayer(name).getGhostBrick();
-      this.omegga.whisper(name, g.orientation);
+      try {
+        const g = await this.omegga.getPlayer(name).getGhostBrick();
+        this.omegga.whisper(name, g.orientation);
+      } catch (err) {
+        console.error(err);
+      }
     });
+
+    this.omegga.on('cmd:o', async (name: string) => {
+      try {
+        const o = await this.omegga.getPlayer(name).getTemplateBoundsData();
+        this.omegga.whisper(
+          name,
+          orientationStr[d2o(o.bricks[0].direction, o.bricks[0].rotation)]
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    });
+
     // command for getting door setup
-    this.omegga.on('cmd:door', async (name: string, next: string) => {
+    this.omegga.on('cmd:door', async (name: string, ...options: string[]) => {
+      const optionSet = new Set(options);
+
       const player = this.omegga.getPlayer(name);
       if (!player) return;
       try {
@@ -55,7 +77,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           return;
         }
 
-        if (Math.max(...vecSub(bounds.maxBound, bounds.minBound)) > 65534) {
+        if (Math.max(...vecSub(bounds.maxBound, bounds.minBound)) > 65535) {
           // make sure door bounds are small enough
           this.omegga.whisper(player, 'Doors this large are not supported');
           return;
@@ -108,15 +130,6 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           },
         };
 
-        if (name === 'cake') {
-          console.debug(
-            `[debug] new door:
-            targetOpen: ${orientationStr[door.orientation.open]}
-            ghost orientation: ${orientationStr[orientation]}
-          `
-          );
-        }
-
         if (Math.max(...door.shift) > 60000) {
           this.omegga.whisper(
             player,
@@ -128,25 +141,29 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
         for (const brick of state.data.bricks) {
           const brickOrientation = d2o(brick.direction, brick.rotation);
 
-          // all translations are relative to up
-          const translate =
-            translationTable[
-              applyTable(inversionTable, d2o(4, 0), brickOrientation)
-            ];
+          // this likely does not need to be computed here (per brick)
+          // and could be done on only the first brick
+          const relativeOpenOrientation = olookup(
+            brickOrientation,
+            orotate(brickOrientation, orientation)
+          );
 
+          // initialize interact component if it doesn't exist
           brick.components.BCD_Interact ??= {
             bPlayInteractSound: false,
             Message: '',
             ConsoleTag: '',
           };
 
+          // add encoded door state
           brick.components.BCD_Interact.ConsoleTag = `door:c:${encodeDoorState({
             brick_size: Math.max(
               ...(getBrickSize(brick, state.data.brick_assets) ?? [0])
             ),
             orientation: {
-              open: door.orientation.open,
-              // close: door.orientation.close,
+              open: relativeOpenOrientation,
+              // self orientation is needed to compute the relative extent/center
+              // as newly placed templates don't know what their original position was
               self: brickOrientation,
             },
             extent: door.extent,
@@ -309,7 +326,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       }
     });
 
-    return { registeredCommands: ['door', 'g'] };
+    return { registeredCommands: ['door', 'g', 'o'] };
   }
 
   async stop() {

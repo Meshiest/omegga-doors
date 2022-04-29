@@ -8,19 +8,29 @@ const {
 // code for computing the inversion and difference tables
 /* const inversionTable = new Array(576).fill(0);
 const differenceTable = new Array(576).fill(0);
-for (const a in orientationMap) {
-  const src = d2o(...orientationMap[a]);
+const relativeTable = new Array(576).fill(0);
+const relativeLookupTable = new Array(576).fill(0);
+for (const a in orientationMap2) {
+  const src = orientationMap2[a];
   for (const b in orientationMap) {
-    const delta = d2o(...orientationMap[b]);
+    const delta = orientationMap2[b];
 
     const dest = rotationTable[src * 24 + delta];
     inversionTable[dest * 24 + delta] = src;
     differenceTable[src * 24 + dest] = delta;
+
+    const relDest = applyRelative(d2o(4, 0), delta, src);
+    relativeTable[src * 24 + delta] = relDest;
+    relativeLookupTable[src * 24 + relDest] = delta;
   }
 }
 
-// console.log(JSON.stringify(inversionTable));
-// console.log(JSON.stringify(differenceTable)); */
+console.log(JSON.stringify(inversionTable));
+console.log(JSON.stringify(differenceTable));
+console.log(JSON.stringify(relativeTable));
+console.log(JSON.stringify(relativeLookupTable));
+
+*/
 
 export const orientationMap2 = Object.fromEntries(
   Object.entries(orientationMap).map(([k, v]) => [k, d2o(...v)])
@@ -90,15 +100,79 @@ export const differenceTable = [
   10, 23, 22, 21, 20, 19, 18, 17, 16,
 ];
 
+const relativeTable = [
+  16, 17, 18, 19, 22, 23, 20, 21, 15, 12, 13, 14, 9, 10, 11, 8, 0, 1, 2, 3, 6,
+  7, 4, 5, 15, 12, 13, 14, 9, 10, 11, 8, 22, 23, 20, 21, 16, 17, 18, 19, 1, 2,
+  3, 0, 5, 6, 7, 4, 22, 23, 20, 21, 16, 17, 18, 19, 9, 10, 11, 8, 15, 12, 13,
+  14, 2, 3, 0, 1, 4, 5, 6, 7, 9, 10, 11, 8, 15, 12, 13, 14, 16, 17, 18, 19, 22,
+  23, 20, 21, 3, 0, 1, 2, 7, 4, 5, 6, 18, 19, 16, 17, 20, 21, 22, 23, 11, 8, 9,
+  10, 13, 14, 15, 12, 4, 5, 6, 7, 2, 3, 0, 1, 11, 8, 9, 10, 13, 14, 15, 12, 20,
+  21, 22, 23, 18, 19, 16, 17, 5, 6, 7, 4, 1, 2, 3, 0, 20, 21, 22, 23, 18, 19,
+  16, 17, 13, 14, 15, 12, 11, 8, 9, 10, 6, 7, 4, 5, 0, 1, 2, 3, 13, 14, 15, 12,
+  11, 8, 9, 10, 18, 19, 16, 17, 20, 21, 22, 23, 7, 4, 5, 6, 3, 0, 1, 2, 17, 18,
+  19, 16, 21, 22, 23, 20, 3, 0, 1, 2, 5, 6, 7, 4, 8, 9, 10, 11, 14, 15, 12, 13,
+  3, 0, 1, 2, 5, 6, 7, 4, 21, 22, 23, 20, 17, 18, 19, 16, 9, 10, 11, 8, 13, 14,
+  15, 12, 21, 22, 23, 20, 17, 18, 19, 16, 5, 6, 7, 4, 3, 0, 1, 2, 10, 11, 8, 9,
+  12, 13, 14, 15, 5, 6, 7, 4, 3, 0, 1, 2, 17, 18, 19, 16, 21, 22, 23, 20, 11, 8,
+  9, 10, 15, 12, 13, 14, 19, 16, 17, 18, 23, 20, 21, 22, 7, 4, 5, 6, 1, 2, 3, 0,
+  12, 13, 14, 15, 10, 11, 8, 9, 7, 4, 5, 6, 1, 2, 3, 0, 23, 20, 21, 22, 19, 16,
+  17, 18, 13, 14, 15, 12, 9, 10, 11, 8, 23, 20, 21, 22, 19, 16, 17, 18, 1, 2, 3,
+  0, 7, 4, 5, 6, 14, 15, 12, 13, 8, 9, 10, 11, 1, 2, 3, 0, 7, 4, 5, 6, 19, 16,
+  17, 18, 23, 20, 21, 22, 15, 12, 13, 14, 11, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7,
+  8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 8, 9, 10, 11,
+  12, 13, 14, 15, 4, 5, 6, 7, 0, 1, 2, 3, 17, 18, 19, 16, 23, 20, 21, 22, 4, 5,
+  6, 7, 0, 1, 2, 3, 12, 13, 14, 15, 8, 9, 10, 11, 18, 19, 16, 17, 22, 23, 20,
+  21, 12, 13, 14, 15, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 19, 16, 17, 18, 21,
+  22, 23, 20, 6, 7, 4, 5, 2, 3, 0, 1, 10, 11, 8, 9, 14, 15, 12, 13, 20, 21, 22,
+  23, 16, 17, 18, 19, 10, 11, 8, 9, 14, 15, 12, 13, 2, 3, 0, 1, 6, 7, 4, 5, 21,
+  22, 23, 20, 19, 16, 17, 18, 2, 3, 0, 1, 6, 7, 4, 5, 14, 15, 12, 13, 10, 11, 8,
+  9, 22, 23, 20, 21, 18, 19, 16, 17, 14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5,
+  2, 3, 0, 1, 23, 20, 21, 22, 17, 18, 19, 16,
+];
+const relativeLookupTable = [
+  16, 17, 18, 19, 22, 23, 20, 21, 15, 12, 13, 14, 9, 10, 11, 8, 0, 1, 2, 3, 6,
+  7, 4, 5, 19, 16, 17, 18, 23, 20, 21, 22, 7, 4, 5, 6, 1, 2, 3, 0, 12, 13, 14,
+  15, 10, 11, 8, 9, 18, 19, 16, 17, 20, 21, 22, 23, 11, 8, 9, 10, 13, 14, 15,
+  12, 4, 5, 6, 7, 2, 3, 0, 1, 17, 18, 19, 16, 21, 22, 23, 20, 3, 0, 1, 2, 5, 6,
+  7, 4, 8, 9, 10, 11, 14, 15, 12, 13, 22, 23, 20, 21, 16, 17, 18, 19, 9, 10, 11,
+  8, 15, 12, 13, 14, 2, 3, 0, 1, 4, 5, 6, 7, 23, 20, 21, 22, 19, 16, 17, 18, 1,
+  2, 3, 0, 7, 4, 5, 6, 14, 15, 12, 13, 8, 9, 10, 11, 20, 21, 22, 23, 18, 19, 16,
+  17, 13, 14, 15, 12, 11, 8, 9, 10, 6, 7, 4, 5, 0, 1, 2, 3, 21, 22, 23, 20, 17,
+  18, 19, 16, 5, 6, 7, 4, 3, 0, 1, 2, 10, 11, 8, 9, 12, 13, 14, 15, 9, 10, 11,
+  8, 15, 12, 13, 14, 16, 17, 18, 19, 22, 23, 20, 21, 3, 0, 1, 2, 7, 4, 5, 6, 1,
+  2, 3, 0, 7, 4, 5, 6, 19, 16, 17, 18, 23, 20, 21, 22, 15, 12, 13, 14, 11, 8, 9,
+  10, 13, 14, 15, 12, 11, 8, 9, 10, 18, 19, 16, 17, 20, 21, 22, 23, 7, 4, 5, 6,
+  3, 0, 1, 2, 5, 6, 7, 4, 3, 0, 1, 2, 17, 18, 19, 16, 21, 22, 23, 20, 11, 8, 9,
+  10, 15, 12, 13, 14, 15, 12, 13, 14, 9, 10, 11, 8, 22, 23, 20, 21, 16, 17, 18,
+  19, 1, 2, 3, 0, 5, 6, 7, 4, 7, 4, 5, 6, 1, 2, 3, 0, 23, 20, 21, 22, 19, 16,
+  17, 18, 13, 14, 15, 12, 9, 10, 11, 8, 11, 8, 9, 10, 13, 14, 15, 12, 20, 21,
+  22, 23, 18, 19, 16, 17, 5, 6, 7, 4, 1, 2, 3, 0, 3, 0, 1, 2, 5, 6, 7, 4, 21,
+  22, 23, 20, 17, 18, 19, 16, 9, 10, 11, 8, 13, 14, 15, 12, 0, 1, 2, 3, 4, 5, 6,
+  7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 12, 13, 14,
+  15, 8, 9, 10, 11, 0, 1, 2, 3, 4, 5, 6, 7, 19, 16, 17, 18, 21, 22, 23, 20, 4,
+  5, 6, 7, 0, 1, 2, 3, 12, 13, 14, 15, 8, 9, 10, 11, 18, 19, 16, 17, 22, 23, 20,
+  21, 8, 9, 10, 11, 12, 13, 14, 15, 4, 5, 6, 7, 0, 1, 2, 3, 17, 18, 19, 16, 23,
+  20, 21, 22, 6, 7, 4, 5, 2, 3, 0, 1, 10, 11, 8, 9, 14, 15, 12, 13, 20, 21, 22,
+  23, 16, 17, 18, 19, 10, 11, 8, 9, 14, 15, 12, 13, 2, 3, 0, 1, 6, 7, 4, 5, 21,
+  22, 23, 20, 19, 16, 17, 18, 2, 3, 0, 1, 6, 7, 4, 5, 14, 15, 12, 13, 10, 11, 8,
+  9, 22, 23, 20, 21, 18, 19, 16, 17, 14, 15, 12, 13, 10, 11, 8, 9, 6, 7, 4, 5,
+  2, 3, 0, 1, 23, 20, 21, 22, 17, 18, 19, 16,
+];
+
 export const applyTable = (table: number[], a: number, b: number) =>
   table[a * 24 + b];
 
-export const orotate = (a: number, b: number) =>
-  applyTable(rotationTable, a, b);
-export const oinvert = (a: number, b: number) =>
-  applyTable(inversionTable, a, b);
-export const odiff = (a: number, b: number) =>
-  applyTable(differenceTable, a, b);
+export const orotate = (input: number, rotation: number) =>
+  applyTable(rotationTable, input, rotation);
+export const oinvert = (input: number, rotation: number) =>
+  applyTable(inversionTable, input, rotation);
+export const odiff = (input: number, output: number) =>
+  applyTable(differenceTable, input, output);
+export const orelative = (input: number, rotation: number) =>
+  applyTable(relativeTable, input, rotation);
+/** given input and output orientations, return the z+0 relative rotation */
+export const olookup = (input: number, output: number) =>
+  applyTable(relativeLookupTable, input, output);
 
 export const vecStr = (a: number[]) => `[ ${a.join(', ')} ]`;
 
@@ -126,7 +200,7 @@ export const vecSub = (a: Vector, b: Vector): Vector => [
   a[2] - b[2],
 ];
 
-/** apply a relative rotation
+/** apply a relative rotation. used to build relativeTable
  * @param anchor the anchor for the relative rotation
  * @param rotation the rotation (applied to the input, relative to the anchor)
  * @param input input orientation

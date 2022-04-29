@@ -1,9 +1,8 @@
 import { Brick, Vector } from 'omegga';
 import {
-  applyRelative,
   odiff,
   oinvert,
-  orientationStr,
+  orelative,
   orotate,
   vecAbs,
   vecAdd,
@@ -99,6 +98,8 @@ export function moveDoorBricks(
   return bricks;
 }
 
+const TEST_BUILDER_MODE = false;
+
 export function toggleDoorState(
   open: boolean,
   state: DoorState,
@@ -107,25 +108,39 @@ export function toggleDoorState(
 ) {
   const brickOrientation = d2o(clickedBrick.direction, clickedBrick.rotation);
 
-  const targetOrientation = applyRelative(
-    d2o(4, 0),
-    open ? odiff(state.orientation.open, d2o(4, 0)) : state.orientation.open,
+  // close orientation is the difference between the open orientation
+  // and the closed orientation (z positive 0)
+  const closeOrientation = odiff(state.orientation.open, d2o(4, 0));
+
+  // relatively rotate the brick by the the open/close orientation
+  // different than a rotation table as it rotates relative to z positive 0
+  // instead of the brick's own orientation
+  const targetOrientation = orelative(
+    brickOrientation,
+    open ? closeOrientation : state.orientation.open
+  );
+
+  // the rotation is the difference between the current orientation
+  // and the target orientation
+  const doorRotation = odiff(brickOrientation, targetOrientation);
+
+  const reorient = getReorientation(state.orientation.self, brickOrientation);
+
+  // get the reorient relative to the opened position
+  const reorientOpened = getReorientation(
+    orotate(state.orientation.open, state.orientation.self),
     brickOrientation
   );
 
-  const doorOrientation = odiff(brickOrientation, targetOrientation);
-
-  const reorient = getReorientation(
-    state.orientation.self,
-    d2o(clickedBrick.direction, clickedBrick.rotation)
-  );
   const center = getDoorCenter(reorient, state.center, clickedBrick.position);
 
-  const shift = translationTable[
-    open ? oinvert(reorient, state.orientation.open) : reorient
-  ](state.shift);
+  // when the door is open, run the close orientation on the reorientation
+  // when the door is closed, the reorient is properly relative to the door's setup
+  // this is because when the door is open, the shift is relative to the closed door's state
+  const shift = translationTable[open ? reorientOpened : reorient](state.shift);
 
-  if (clickedBrick.components) {
+  // code used to build test states
+  if (TEST_BUILDER_MODE && clickedBrick.components) {
     console.log(
       '{\nstate:',
       JSON.stringify(state),
@@ -153,7 +168,7 @@ export function toggleDoorState(
     open,
     center,
     vecScale(shift, open ? -1 : 1),
-    doorOrientation,
+    doorRotation,
     bricks
   );
 }

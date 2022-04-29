@@ -3,6 +3,8 @@ import {
   applyRelative,
   odiff,
   oinvert,
+  olookup,
+  orelative,
   orientationMap2 as o,
   orientationMap2,
   orientationStr,
@@ -34,7 +36,6 @@ assert(() => isKindaSimilar({ a: 1 }, { a: 1, b: 0 }));
 assert(() => !isKindaSimilar({ a: 1 }, { a: 0, b: 0 }));
 
 // door state tests
-assert(() => testDoorState(doorTests.yPositive0Setup_zPositive0Door));
 assert(() => testDoorState(doorTests.zPositive0Setup_xPositive0Door));
 assert(() => testDoorState(doorTests.zPositive0Setup_yPositive0Door));
 assert(() => testDoorState(doorTests.zPositive0Setup_yNegative0Door));
@@ -47,6 +48,8 @@ assert(() => testDoorState(doorTests.crest_zPositive0Setup_zPositive90Door));
 assert(() => testDoorState(doorTests.crest_zPositive0Setup_yPositive0Door));
 assert(() => testDoorState(doorTests.crest_zPositive0Setup_yPositive90Door));
 assert(() => testDoorState(doorTests.crest_zPositive0Setup_xPositive0Door));
+assert(() => testDoorState(doorTests.xPositive180Setup_zPositive270Door));
+assert(() => testDoorState(doorTests.yPositive180Setup_zPositive0Door));
 
 import './tests/relative_rotations';
 
@@ -72,27 +75,6 @@ for (const key in o) {
     }`
   );
 } */
-
-// experimenting with applying rotations to differences
-/* console.debug(
-  `[debug] diff x 0 -> x 90 ${
-    orientationStr[
-      odiff(
-        odiff(o.Z_Positive_0, o.Z_Positive_90),
-        odiff(o.X_Positive_0, o.X_Positive_90)
-      )
-    ]
-  }`
-);
-
-console.debug(
-  `[debug] diff y 0 -> y 90 ${
-    orientationStr[
-      odiff(o.Z_Positive_90, odiff(o.Y_Positive_0, o.Y_Positive_90))
-    ]
-  }`
-);
- */
 
 // This code validates the rotation table
 // if a test fails, either the translation table or the rotation table is wrong

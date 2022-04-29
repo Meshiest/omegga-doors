@@ -535,96 +535,8 @@ export const doorTests: Record<string, DoorTest> = {
       ],
     },
   },
-  yPositive0Setup_zPositive0Door: {
-    state: {
-      brick_size: 15,
-      center: [0, -16, 0],
-      extent: [15, 30, 5],
-      shift: [-10, 0, 10],
-      orientation: { open: 4, self: 8 },
-    },
-    closed: {
-      clickedBrick: {
-        position: [-595, 305, 50],
-        size: [5, 15, 14],
-        rotation: 0,
-        direction: 4,
-      },
-      bricks: [
-        {
-          position: [-595, 305, 18],
-          size: [5, 15, 14],
-          rotation: 0,
-          direction: 4,
-        },
-        {
-          position: [-599, 315, 34],
-          size: [1, 5, 2],
-          rotation: 0,
-          direction: 4,
-        },
-        {
-          position: [-594, 315, 34],
-          size: [4, 5, 2],
-          rotation: 2,
-          direction: 4,
-        },
-        {
-          position: [-595, 300, 34],
-          size: [10, 5, 2],
-          rotation: 1,
-          direction: 4,
-        },
-        {
-          position: [-595, 305, 50],
-          size: [5, 15, 14],
-          rotation: 0,
-          direction: 4,
-        },
-      ],
-    },
-    open: {
-      clickedBrick: {
-        position: [-585, 295, 50],
-        size: [5, 15, 14],
-        rotation: 3,
-        direction: 4,
-      },
-      bricks: [
-        {
-          position: [-585, 295, 18],
-          size: [5, 15, 14],
-          rotation: 3,
-          direction: 4,
-        },
-        {
-          position: [-575, 299, 34],
-          size: [1, 5, 2],
-          rotation: 3,
-          direction: 4,
-        },
-        {
-          position: [-575, 294, 34],
-          size: [4, 5, 2],
-          rotation: 1,
-          direction: 4,
-        },
-        {
-          position: [-590, 295, 34],
-          size: [10, 5, 2],
-          rotation: 0,
-          direction: 4,
-        },
-        {
-          position: [-585, 295, 50],
-          size: [5, 15, 14],
-          rotation: 3,
-          direction: 4,
-        },
-      ],
-    },
-  },
 
+  // single brick doors to test rotation and position easier
   crest_zPositive0Setup_zPositive0Door: {
     state: {
       brick_size: 10,
@@ -826,6 +738,165 @@ export const doorTests: Record<string, DoorTest> = {
           size: [10, 5, 6],
           rotation: 2,
           direction: 1,
+        },
+      ],
+    },
+  },
+
+  xPositive180Setup_zPositive270Door: {
+    state: {
+      brick_size: 15,
+      center: [-16, 0, 0],
+      extent: [30, 15, 5],
+      shift: [0, -10, -10],
+      orientation: { open: 19, self: 2 },
+    },
+    closed: {
+      clickedBrick: {
+        position: [-105, 25, 46],
+        size: [5, 15, 14],
+        rotation: 3,
+        direction: 4,
+      },
+      bricks: [
+        {
+          position: [-105, 25, 46],
+          size: [5, 15, 14],
+          rotation: 3,
+          direction: 4,
+        },
+        {
+          position: [-110, 25, 30],
+          size: [10, 5, 2],
+          rotation: 0,
+          direction: 4,
+        },
+        { position: [-95, 24, 30], size: [4, 5, 2], rotation: 1, direction: 4 },
+        { position: [-95, 29, 30], size: [1, 5, 2], rotation: 3, direction: 4 },
+        {
+          position: [-105, 25, 14],
+          size: [5, 15, 14],
+          rotation: 3,
+          direction: 4,
+        },
+      ],
+    },
+    open: {
+      clickedBrick: {
+        position: [-115, 15, 46],
+        size: [5, 15, 14],
+        rotation: 2,
+        direction: 4,
+      },
+      bricks: [
+        {
+          position: [-115, 15, 46],
+          size: [5, 15, 14],
+          rotation: 2,
+          direction: 4,
+        },
+        {
+          position: [-115, 20, 30],
+          size: [10, 5, 2],
+          rotation: 3,
+          direction: 4,
+        },
+        { position: [-116, 5, 30], size: [4, 5, 2], rotation: 0, direction: 4 },
+        { position: [-111, 5, 30], size: [1, 5, 2], rotation: 2, direction: 4 },
+        {
+          position: [-115, 15, 14],
+          size: [5, 15, 14],
+          rotation: 2,
+          direction: 4,
+        },
+      ],
+    },
+  },
+  yPositive180Setup_zPositive0Door: {
+    state: {
+      brick_size: 15,
+      center: [0, -16, 0],
+      extent: [15, 30, 5],
+      shift: [10, 0, -10],
+      orientation: { open: 19, self: 10 },
+    },
+    closed: {
+      clickedBrick: {
+        position: [-275, -535, 46],
+        size: [5, 15, 14],
+        rotation: 0,
+        direction: 4,
+      },
+      bricks: [
+        {
+          position: [-274, -525, 30],
+          size: [4, 5, 2],
+          rotation: 2,
+          direction: 4,
+        },
+        {
+          position: [-275, -535, 14],
+          size: [5, 15, 14],
+          rotation: 0,
+          direction: 4,
+        },
+        {
+          position: [-279, -525, 30],
+          size: [1, 5, 2],
+          rotation: 0,
+          direction: 4,
+        },
+        {
+          position: [-275, -540, 30],
+          size: [10, 5, 2],
+          rotation: 1,
+          direction: 4,
+        },
+        {
+          position: [-275, -535, 46],
+          size: [5, 15, 14],
+          rotation: 0,
+          direction: 4,
+        },
+      ],
+    },
+    open: {
+      clickedBrick: {
+        position: [-265, -545, 46],
+        size: [5, 15, 14],
+        rotation: 3,
+        direction: 4,
+      },
+      bricks: [
+        {
+          position: [-255, -546, 30],
+          size: [4, 5, 2],
+          rotation: 1,
+          direction: 4,
+        },
+        {
+          position: [-265, -545, 14],
+          size: [5, 15, 14],
+          rotation: 3,
+          direction: 4,
+        },
+        {
+          position: [-255, -541, 30],
+          size: [1, 5, 2],
+          rotation: 3,
+          direction: 4,
+        },
+        {
+          position: [-270, -545, 30],
+          size: [10, 5, 2],
+          rotation: 0,
+          direction: 4,
+        },
+        {
+          position: [-265, -545, 46],
+          size: [5, 15, 14],
+          rotation: 3,
+          direction: 4,
         },
       ],
     },
