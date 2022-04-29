@@ -24,41 +24,43 @@ const {
 type Config = {};
 type Storage = {};
 
+const DEBUG_MODE = false;
+
 export default class Plugin implements OmeggaPlugin<Config, Storage> {
   omegga: OL;
   config: PC<Config>;
   store: PS<Storage>;
 
-  activeDoors: { center: Vector; extent: Vector }[];
-
   constructor(omegga: OL, config: PC<Config>, store: PS<Storage>) {
     this.omegga = omegga;
     this.config = config;
     this.store = store;
-    this.activeDoors = [];
   }
 
   async init() {
-    this.omegga.on('cmd:g', async (name: string) => {
-      try {
-        const g = await this.omegga.getPlayer(name).getGhostBrick();
-        this.omegga.whisper(name, g.orientation);
-      } catch (err) {
-        console.error(err);
-      }
-    });
+    // debug commands for getting template and brick orientations
+    if (DEBUG_MODE) {
+      this.omegga.on('cmd:g', async (name: string) => {
+        try {
+          const g = await this.omegga.getPlayer(name).getGhostBrick();
+          this.omegga.whisper(name, g.orientation);
+        } catch (err) {
+          console.error(err);
+        }
+      });
 
-    this.omegga.on('cmd:o', async (name: string) => {
-      try {
-        const o = await this.omegga.getPlayer(name).getTemplateBoundsData();
-        this.omegga.whisper(
-          name,
-          orientationStr[d2o(o.bricks[0].direction, o.bricks[0].rotation)]
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    });
+      this.omegga.on('cmd:o', async (name: string) => {
+        try {
+          const o = await this.omegga.getPlayer(name).getTemplateBoundsData();
+          this.omegga.whisper(
+            name,
+            orientationStr[d2o(o.bricks[0].direction, o.bricks[0].rotation)]
+          );
+        } catch (err) {
+          console.error(err);
+        }
+      });
+    }
 
     // command for getting door setup
     this.omegga.on('cmd:door', async (name: string, ...options: string[]) => {
@@ -184,6 +186,8 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       }
     });
 
+    const activeDoors: { center: Vector; extent: Vector }[] = [];
+
     // interaction handling
     this.omegga.on('interact', async ({ player, message, position }) => {
       if (message.length === 0) return;
@@ -193,20 +197,19 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
         /^door:(?<open>[oc]):(?<base64>(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/
       );
 
-      let activeDoorRegion: typeof this.activeDoors[number];
+      let activeDoorRegion: typeof activeDoors[number];
 
       const cleanup = () => {
-        const index = this.activeDoors.indexOf(activeDoorRegion);
+        const index = activeDoors.indexOf(activeDoorRegion);
         if (index > -1) {
-          this.activeDoors[index] =
-            this.activeDoors[this.activeDoors.length - 1];
-          this.activeDoors.pop();
+          activeDoors[index] = activeDoors[activeDoors.length - 1];
+          activeDoors.pop();
         }
       };
 
       // check if a door is active
       const checkActiveDoor = () =>
-        this.activeDoors.some(
+        activeDoors.some(
           ({ center, extent }) =>
             position[0] >= center[0] - extent[0] &&
             position[0] <= center[0] + extent[0] &&
@@ -233,7 +236,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
               state.brick_size,
             ] as Vector,
           };
-          this.activeDoors.push(activeDoorRegion);
+          activeDoors.push(activeDoorRegion);
 
           // get the save data around the clicked brick
           const activeBrickData = await this.omegga.getSaveData(
@@ -326,7 +329,11 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       }
     });
 
-    return { registeredCommands: ['door', 'g', 'o'] };
+    return {
+      registeredCommands: ['door', DEBUG_MODE && 'g', DEBUG_MODE && 'o'].filter(
+        Boolean
+      ) as string[],
+    };
   }
 
   async stop() {
