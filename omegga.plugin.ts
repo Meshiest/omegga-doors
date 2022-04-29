@@ -25,6 +25,7 @@ type Config = {};
 type Storage = {};
 
 const DEBUG_MODE = false;
+const OPEN_THROTTLE = 150;
 
 export default class Plugin implements OmeggaPlugin<Config, Storage> {
   omegga: OL;
@@ -52,15 +53,21 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       this.omegga.on('cmd:o', async (name: string) => {
         try {
           const o = await this.omegga.getPlayer(name).getTemplateBoundsData();
-          this.omegga.whisper(
-            name,
-            orientationStr[d2o(o.bricks[0].direction, o.bricks[0].rotation)]
-          );
+          for (const b of o.bricks) {
+            this.omegga.whisper(
+              name,
+              orientationStr[d2o(b.direction, b.rotation)] +
+                ' ' +
+                o.brick_assets[b.asset_name_index]
+            );
+          }
         } catch (err) {
           console.error(err);
         }
       });
     }
+
+    const antispam = {};
 
     // command for getting door setup
     this.omegga.on('cmd:door', async (name: string, ...options: string[]) => {
@@ -111,24 +118,16 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
         const orientation = d2o(...orientationMap[ghost.orientation]);
 
-        const state = {
-          bounds,
-          data,
-          start: bounds.center,
-          orientation: d2o(4, 0),
-        };
-
         const door: DoorState = {
           center: null,
           brick_size: 0,
           extent: vecAbs(
-            vecScale(vecSub(state.bounds.maxBound, state.bounds.minBound), 0.5)
+            vecScale(vecSub(bounds.maxBound, bounds.minBound), 0.5)
           ),
-          shift: vecSub(ghost.location as Vector, state.start),
+          shift: vecSub(ghost.location as Vector, bounds.center),
           orientation: {
             self: d2o(4, 0),
             open: orientation,
-            // close: applyTable(differenceTable, orientation, state.orientation),
           },
         };
 
@@ -140,7 +139,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           return;
         }
 
-        for (const brick of state.data.bricks) {
+        for (const brick of data.bricks) {
           const brickOrientation = d2o(brick.direction, brick.rotation);
 
           // this likely does not need to be computed here (per brick)
@@ -160,7 +159,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           // add encoded door state
           brick.components.BCD_Interact.ConsoleTag = `door:c:${encodeDoorState({
             brick_size: Math.max(
-              ...(getBrickSize(brick, state.data.brick_assets) ?? [0])
+              ...(getBrickSize(brick, data.brick_assets) ?? [0])
             ),
             orientation: {
               open: relativeOpenOrientation,
@@ -170,12 +169,12 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
             },
             extent: door.extent,
             shift: door.shift,
-            center: vecSub(state.bounds.center, brick.position),
+            center: vecSub(bounds.center, brick.position),
           })}`;
         }
-        delete state.data.components;
+        delete data.components;
 
-        await player.loadSaveData(state.data);
+        await player.loadSaveData(data);
         this.omegga.whisper(
           player,
           'You can paste these bricks. This is a <b>CLOSED</> door template. It will <b>OPEN when you click</>.'
@@ -222,6 +221,21 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       if (checkActiveDoor()) return;
 
       if (match) {
+        if (player.id in antispam) {
+          // anti spam on second click onward
+          clearTimeout(antispam[player.id]);
+          await new Promise(
+            resolve =>
+              (antispam[player.id] = setTimeout(resolve, OPEN_THROTTLE))
+          );
+          delete antispam[player.id];
+        } else {
+          // no antispam on first click
+          antispam[player.id] = setTimeout(() => {
+            delete antispam[player.id];
+          }, OPEN_THROTTLE);
+        }
+
         try {
           const open = match.groups.open === 'o';
           const state = decodeDoorState(match.groups.base64);

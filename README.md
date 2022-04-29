@@ -8,8 +8,8 @@ doors/moving bricks in brickadia for [omegga](https://github.com/brickadia-commu
 
 ## Usage
 
-1. copy your door bricks
-2. paste (without placing) your door template
-3. move template's hinge over the hinge of the bricks you copied
-4. run `/door`
-5. paste finished door where you want
+1. copy bricks of a closed door
+2. paste template (but don't place bricks)
+3. move your template on top of the copied bricks in an "open" orientation
+4. `/door` will update your template to a working door
+5. paste/place your door anywhere
