@@ -33,6 +33,10 @@ export function isKindaSimilar(
   }
 
   if (typeof a === 'object') {
+    if (!a || !b) {
+      if (print) printDebug(a, b, path);
+      return false;
+    }
     for (const key in a) {
       if (!(key in b)) {
         if (print) printDebug(a, b, path);
@@ -94,7 +98,17 @@ let count = 0;
 let failed = 0;
 export function assert(condition: () => boolean, label?: string) {
   count++;
-  if (!condition()) {
+  try {
+    if (!condition()) {
+      failed++;
+      console.debug(
+        `[test] failed #${count}:`,
+        label ?? '',
+        condition.toString()
+      );
+    }
+  } catch (err) {
+    console.error('error in test', count, err);
     failed++;
     console.debug(
       `[test] failed #${count}:`,

@@ -123,6 +123,18 @@
           "required": true
         }
       ]
+    },
+    {
+      "name": "/doorregion",
+      "description": "Stores a region based on currently selected bricks to be used for creating triggers.",
+      "example": "/doorregion",
+      "args": []
+    },
+    {
+      "name": "/doortrigger",
+      "description": "Makes a trigger from selected bricks and /doorregion. Triggers remotely activate doors.",
+      "example": "/doortrigger",
+      "args": []
     }
   ]
 }

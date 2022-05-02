@@ -1,5 +1,4 @@
 import { Vector } from 'omegga';
-const crypto = require('crypto');
 
 export type DoorOptions = Partial<{
   private: boolean;
@@ -31,11 +30,14 @@ export type DoorState = {
 
 // 22 = 1 + 2 * 3 + 2 * 3 + 2 * 3 + 1 * 3
 // extra 10 bytes are for the future!!!
-const BUFFER_SIZE = 22 + 10;
+const BUFFER_SIZE = 22 + 8;
 
 // generate a new version key
-/* console.debug(
-  '[debug] keygen [',
+// don't forget to add/remove crypto from access.json
+/*
+const crypto = require('crypto');
+console.debug(
+  'keygen [',
   Array.from(crypto.randomBytes(BUFFER_SIZE)).join(', '),
   ']'
 ); */
@@ -44,25 +46,43 @@ const BUFFER_SIZE = 22 + 10;
 // doors that do not have this version key are not compatible with this decoder
 const VERSION_KEY = [
   91, 52, 247, 54, 153, 59, 158, 64, 39, 219, 119, 247, 83, 74, 48, 244, 169,
-  149, 49, 119, 197, 128, 135, 117, 8, 167, 172, 74, 165, 180, 115, 181,
+  149, 49, 119, 197, 128, 135, 117, 8, 167, 172, 74, 165, 180,
 ];
 
-function applyPinToBuffer(buff: ArrayBuffer | Buffer, pin: number[]) {
+function applyPinToBuffer(dataview: DataView, pin: number[]) {
   // apply the pin as a repeating buffer
-  for (let i = 0; i < buff.byteLength; i++) {
-    buff[i] ^= pin[i % pin.length];
+  for (let i = 0; i < dataview.byteLength; i++) {
+    dataview.setUint8(i, dataview.getUint8(i) ^ pin[i % pin.length]);
   }
 }
 
 export function readDoorStateFromBuffer(buffer: ArrayBuffer, pin?: number[]) {
-  // apply version key to the buffer
-  for (let i = 0; i < buffer.byteLength && i < VERSION_KEY.length; i++)
-    buffer[i] ^= VERSION_KEY[i];
-
-  if (pin) applyPinToBuffer(buffer, pin);
+  let parity = 0;
 
   const dataview = new DataView(buffer);
-  let bytes = 0;
+
+  // apply version key to the buffer
+  for (let i = buffer.byteLength - 1; i >= 0 && i < VERSION_KEY.length; i--) {
+    dataview.setUint8(
+      i,
+      dataview.getUint8(i) ^
+        VERSION_KEY[i] ^
+        (i > 0 ? dataview.getUint8(i - 1) : 0)
+    );
+  }
+
+  if (pin) applyPinToBuffer(dataview, pin);
+
+  for (let i = 0; i < buffer.byteLength; i++) {
+    if (i !== 1) parity ^= dataview.getUint8(i);
+  }
+
+  // parity failure
+  if (parity !== dataview.getUint8(1)) {
+    return null;
+  }
+
+  let bytes = 1;
   // version check
   if (dataview.getUint8(0) !== 111) return null;
   const state: DoorState = {
@@ -93,6 +113,7 @@ export function readDoorStateFromBuffer(buffer: ArrayBuffer, pin?: number[]) {
         oneway: (byte & 2) > 0,
         destruction: (byte & 4) > 0,
         disabled: (byte & 8) > 0,
+        pin,
       };
     })(),
   };
@@ -103,7 +124,11 @@ export function writeDoorStateToBuffer(state: DoorState) {
   const buffer = new ArrayBuffer(BUFFER_SIZE);
   const dataview = new DataView(buffer);
   let bytes = 0;
-  dataview.setUint8(0, state.brick_size);
+  // 0th byte is version
+  dataview.setUint8(0, 111);
+  // 1st byte is parity
+  bytes += 1;
+  dataview.setUint8((bytes += 1), state.brick_size);
   dataview.setInt16((bytes += 1), state.center[0]);
   dataview.setInt16((bytes += 2), state.center[1]);
   dataview.setInt16((bytes += 2), state.center[2]);
@@ -117,17 +142,30 @@ export function writeDoorStateToBuffer(state: DoorState) {
   dataview.setUint8((bytes += 1), state.orientation.self);
   dataview.setUint8(
     (bytes += 1),
-    (state.flags.private ? 1 : 0) |
-      (state.flags.oneway ? 2 : 0) |
-      (state.flags.destruction ? 4 : 0) |
-      (state.flags.disabled ? 8 : 0)
+    (state.flags?.private ? 1 : 0) |
+      (state.flags?.oneway ? 2 : 0) |
+      (state.flags?.destruction ? 4 : 0) |
+      (state.flags?.disabled ? 8 : 0)
   );
 
-  if ('pin' in state.flags) applyPinToBuffer(buffer, state.flags.pin);
+  let parity = 0;
+  for (let i = 0; i < buffer.byteLength; i++) {
+    if (i !== 1) parity ^= dataview.getUint8(i);
+  }
+  dataview.setUint8(1, parity);
+
+  if ('pin' in state?.flags && state.flags.pin)
+    applyPinToBuffer(dataview, state.flags.pin);
 
   // apply version key to buffer
-  for (let i = 0; i < buffer.byteLength && i < VERSION_KEY.length; i++)
-    buffer[i] ^= VERSION_KEY[i];
+  for (let i = 0; i < buffer.byteLength && i < VERSION_KEY.length; i++) {
+    dataview.setUint8(
+      i,
+      dataview.getUint8(i) ^
+        VERSION_KEY[i] ^
+        (i > 0 ? dataview.getUint8(i - 1) : 0)
+    );
+  }
 
   return buffer;
 }

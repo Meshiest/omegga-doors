@@ -52,6 +52,7 @@ assert(() => testDoorState(doorTests.xPositive180Setup_zPositive270Door));
 assert(() => testDoorState(doorTests.yPositive180Setup_zPositive0Door));
 
 import './tests/relative_rotations';
+import './tests/encoding';
 
 testResults();
 
