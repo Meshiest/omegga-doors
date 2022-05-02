@@ -1,4 +1,11 @@
-import OmeggaPlugin, { OL, PC, PS, Vector, WriteSaveObject } from 'omegga';
+import OmeggaPlugin, {
+  OL,
+  OmeggaPlayer,
+  PC,
+  PS,
+  Vector,
+  WriteSaveObject,
+} from 'omegga';
 import { getDoorSelection, toggleDoorState } from 'src/door';
 import {
   applyTable,
@@ -12,7 +19,12 @@ import {
   vecScale,
   vecSub,
 } from 'src/math';
-import { decodeDoorState, DoorState, encodeDoorState } from 'src/state';
+import {
+  decodeDoorState,
+  DoorOptions,
+  DoorState,
+  encodeDoorState,
+} from 'src/state';
 import 'src/test';
 
 const {
@@ -21,11 +33,41 @@ const {
   getBrickSize,
 } = OMEGGA_UTIL.brick;
 
-type Config = {};
+type Config = {
+  // done, untested
+  'create-only-authorized': boolean;
+  // done, untested
+  'use-only-authorized': boolean;
+  // done, untested
+  'authorized-users': { id: string; name: string }[];
+  // done, untested
+  'authorized-role': string;
+  // done, untested
+  'allow-one-way': boolean;
+  // done, untested
+  'allow-destruction': boolean;
+  // done, untested
+  'allow-private': boolean;
+  // done, untested
+  'allow-password': boolean;
+  // done, need triggers to be implemented to finish
+  'allow-disabled': boolean;
+  // not implemented
+  'allow-triggers': boolean;
+  // done, untested
+  'authorized-unlock': boolean;
+  // done, untested
+  'anti-spam-throttle': number;
+  // done, untested, not implemented on triggers
+  'max-door-bricks': number;
+  // done, untested, not implemented on triggers
+  'max-door-size': number;
+  // done, untested, not implemented on triggers
+  'max-door-shift': number;
+};
 type Storage = {};
 
 const DEBUG_MODE = false;
-const OPEN_THROTTLE = 150;
 
 export default class Plugin implements OmeggaPlugin<Config, Storage> {
   omegga: OL;
@@ -38,7 +80,30 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
     this.store = store;
   }
 
+  /** check if a player is authorized by config */
+  isAuthorized(playerId: string, mode: 'use' | 'create') {
+    const hasRole = () =>
+      Player.getRoles(Omegga, playerId).includes(
+        this.config['authorized-role']
+      );
+    const isAuthorizedUser = () =>
+      this.config['authorized-users'].some(u => u.id === playerId);
+    return (
+      (mode === 'create' &&
+        (!this.config['create-only-authorized'] ||
+          hasRole() ||
+          isAuthorizedUser())) ||
+      (mode === 'use' &&
+        (!this.config['use-only-authorized'] ||
+          hasRole() ||
+          isAuthorizedUser()))
+    );
+  }
+
   async init() {
+    // cache for pins used by players (so they don't have to re-enter the pins)
+    const pinCache: Record<string, number[]> = {};
+
     // debug commands for getting template and brick orientations
     if (DEBUG_MODE) {
       this.omegga.on('cmd:g', async (name: string) => {
@@ -68,13 +133,114 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
     }
 
     const antispam = {};
+    const throttleAmount = Math.min(
+      Math.max(this.config['anti-spam-throttle'], 0),
+      60000
+    );
+    const handleAntispam = async (id: string) => {
+      if (throttleAmount === 0) return;
+
+      if (id in antispam) {
+        // anti spam on second click onward
+        clearTimeout(antispam[id]);
+        await new Promise(
+          resolve => (antispam[id] = setTimeout(resolve, throttleAmount))
+        );
+        delete antispam[id];
+      } else {
+        // no antispam on first click
+        antispam[id] = setTimeout(() => {
+          delete antispam[id];
+        }, throttleAmount);
+      }
+    };
+
+    if (this.config['allow-password'])
+      this.omegga.on('cmd:doorpass', async (name: string, password: string) => {
+        const player = Omegga.getPlayer(name);
+        if (!player) return;
+        if (!password)
+          return this.omegga.whisper(
+            name,
+            'Please specify a password: /doorpass p4ssw0rd.'
+          );
+        if (password.includes(':'))
+          return this.omegga.whisper(
+            name,
+            'Passwords cannot contain : because it is used in option parsing'
+          );
+        if (password.split('').some(c => c.charCodeAt(0) > 256))
+          return this.omegga.whisper(name, 'Unicode is not supported in pins.');
+        if (password.length > 32)
+          return this.omegga.whisper(
+            name,
+            "Pins longer than 32 characters don't add entropy."
+          );
+        this.omegga.whisper(name, 'Pin has been stored.');
+        pinCache[player.id] = password.split('').map(c => c.charCodeAt(0));
+      });
 
     // command for getting door setup
-    this.omegga.on('cmd:door', async (name: string, ...options: string[]) => {
-      const optionSet = new Set(options);
-
+    this.omegga.on('cmd:door', async (name: string, ...args: string[]) => {
       const player = this.omegga.getPlayer(name);
       if (!player) return;
+
+      const options: DoorOptions = {};
+      try {
+        for (const o of args) {
+          const [option, value] = o.split(':');
+          switch (option) {
+            case 'private':
+              if (!this.config['allow-private'])
+                throw 'Private doors are disabled';
+              options.private = true;
+              break;
+            case 'oneway':
+              if (!this.config['allow-one-way'])
+                throw 'One-Way doors are disabled';
+              options.oneway = true;
+              break;
+            case 'destruction':
+              if (!this.config['allow-destruction'])
+                throw 'Self destructing doors are disabled';
+              options.destruction = true;
+              break;
+            case 'disabled':
+              if (!this.config['allow-disabled'])
+                throw 'Disabled doors are ...disabled lol?';
+              options.disabled = true;
+              break;
+            case 'password':
+            case 'pin':
+              if (!this.config['allow-password'])
+                throw 'Passworded doors are disabled';
+              if (!value || typeof value !== 'string')
+                throw 'No pin provided. use pin:1234abc';
+              if (value.split('').some(c => c.charCodeAt(0) > 256))
+                throw 'Unicode is not supported in pins.';
+              if (value.length > 32)
+                throw "Pins longer than 32 characters don't add entropy.";
+              if (value === '69') this.omegga.whisper(name, 'nice.');
+              options.pin = value.split('').map(c => c.charCodeAt(0));
+              break;
+            default:
+              throw 'Unrecognized door option: ' + option.replace(/\W/g, '');
+          }
+        }
+      } catch (err) {
+        if (typeof err !== 'string')
+          console.error('error parsing door options', err);
+        else this.omegga.whisper(name, 'Error parsing door options: ' + err);
+      }
+
+      if (!this.isAuthorized(player.id, 'create')) {
+        this.omegga.whisper(
+          player,
+          'You are not authorized to create doors on this server.'
+        );
+        return;
+      }
+
       try {
         // start setting up a door
         const bounds = await player.getTemplateBounds();
@@ -86,21 +252,41 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           return;
         }
 
-        if (Math.max(...vecSub(bounds.maxBound, bounds.minBound)) > 65535) {
+        const doorBoundsSize = Math.max(
+          ...vecSub(bounds.maxBound, bounds.minBound)
+        );
+
+        if (doorBoundsSize > 65535) {
           // make sure door bounds are small enough
           this.omegga.whisper(player, 'Doors this large are not supported');
+          return;
+        }
+        if (doorBoundsSize / 10 > this.config['max-door-size']) {
+          this.omegga.whisper(
+            player,
+            `This door is larger than the max configured size (${this.config['max-door-size']})`
+          );
           return;
         }
 
         const data = await player.getTemplateBoundsData();
 
-        if (!data || data.bricks.length === 0) {
+        if (!data || data.brick_count === 0) {
           this.omegga.whisper(
             player,
             'No selected bricks. Copy some bricks and move your template where you want the door to open.'
           );
           return;
         }
+
+        if (data.brick_count > this.config['max-door-bricks']) {
+          this.omegga.whisper(
+            player,
+            `This door contains more bricks than allowed (${this.config['max-door-bricks']})`
+          );
+          return;
+        }
+
         if (data.version !== 10) {
           this.omegga.whisper(player, 'Unsupported BRS version');
           return;
@@ -118,9 +304,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
         const orientation = d2o(...orientationMap[ghost.orientation]);
 
-        const door: DoorState = {
-          center: null,
-          brick_size: 0,
+        const door: Partial<DoorState> = {
           extent: vecAbs(
             vecScale(vecSub(bounds.maxBound, bounds.minBound), 0.5)
           ),
@@ -131,10 +315,18 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           },
         };
 
-        if (Math.max(...door.shift) > 60000) {
+        const ghostBrickDistance = Math.max(...vecAbs(door.shift));
+        if (ghostBrickDistance > 65535) {
           this.omegga.whisper(
             player,
-            'Doors this far apart are not supported.'
+            'This door moves further than the max supported distance'
+          );
+          return;
+        }
+        if (ghostBrickDistance / 10 > this.config['max-door-shift']) {
+          this.omegga.whisper(
+            player,
+            `This door moves further than the max configured shift (${this.config['max-door-shift']})`
           );
           return;
         }
@@ -170,6 +362,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
             extent: door.extent,
             shift: door.shift,
             center: vecSub(bounds.center, brick.position),
+            flags: options,
           })}`;
         }
         delete data.components;
@@ -189,9 +382,16 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
     // interaction handling
     this.omegga.on('interact', async ({ player, message, position }) => {
+      if (!this.isAuthorized(player.id, 'use')) {
+        this.omegga.whisper(
+          player.name,
+          'You are not authorized to use doors on this server.'
+        );
+        return;
+      }
+
       if (message.length === 0) return;
       // commented out to allow everyone to interact with doors
-      // if (!['cake', 'x', 'Zeblote', 'Aware'].includes(player.name)) return;
       const match = message.match(
         /^door:(?<open>[oc]):(?<base64>(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/
       );
@@ -221,25 +421,47 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       if (checkActiveDoor()) return;
 
       if (match) {
-        if (player.id in antispam) {
-          // anti spam on second click onward
-          clearTimeout(antispam[player.id]);
-          await new Promise(
-            resolve =>
-              (antispam[player.id] = setTimeout(resolve, OPEN_THROTTLE))
-          );
-          delete antispam[player.id];
-        } else {
-          // no antispam on first click
-          antispam[player.id] = setTimeout(() => {
-            delete antispam[player.id];
-          }, OPEN_THROTTLE);
-        }
+        await handleAntispam(player.id);
 
         try {
           const open = match.groups.open === 'o';
-          const state = decodeDoorState(match.groups.base64);
-          if (!state) return;
+          const state =
+            (player.id in pinCache
+              ? decodeDoorState(match.groups.base64, pinCache[player.id])
+              : null) ?? decodeDoorState(match.groups.base64);
+          if (!state) {
+            this.omegga.whisper(
+              player.name,
+              `Unable to decode door data. Door could be encrypted${
+                this.config['allow-password']
+                  ? ' (<code>/doorpass p4ssw0rd</>)'
+                  : ''
+              } or could be from an outdated plugin.`
+            );
+            return;
+          }
+
+          if (state.flags.oneway && !this.config['allow-one-way']) {
+            this.omegga.middlePrint(player.name, `One way doors are disabled.`);
+            return;
+          }
+
+          if (state.flags.oneway && !this.config['allow-destruction']) {
+            this.omegga.middlePrint(
+              player.name,
+              `Self destructing doors are disabled.`
+            );
+            return;
+          }
+
+          if (state.flags.disabled) {
+            if (!this.config['allow-disabled'])
+              this.omegga.middlePrint(
+                player.name,
+                `Disabled doors are ...disabled?`
+              );
+            return;
+          }
 
           // race condition detection for when two players click a brick within the same door region
           activeDoorRegion = {
@@ -290,6 +512,32 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           const ownerId =
             activeBrickData.brick_owners[brick.owner_index - 1].id;
 
+          if (state.flags.private) {
+            // check if private doors are enabled
+            if (this.config['allow-private']) {
+              this.omegga.middlePrint(
+                player.name,
+                `Private doors are disabled.`
+              );
+              return;
+            }
+
+            // check if this players is the owner or the player is authorized
+            if (
+              ownerId !== player.id &&
+              !(
+                this.config['authorized-unlock'] &&
+                this.isAuthorized(player.id, 'use')
+              )
+            ) {
+              this.omegga.middlePrint(
+                player.name,
+                `You are not authorized to open this door.`
+              );
+              return;
+            }
+          }
+
           const { center, extent } = getDoorSelection(state, brick);
 
           const doorData = (await this.omegga.getSaveData({
@@ -322,13 +570,24 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
             doorData.bricks
           );
 
+          // strip console tags from this door if oneway is enabled
+          if (state.flags.oneway) {
+            for (const b of doorData.bricks) {
+              if (b.components.BCD_Interact?.ConsoleTag.startsWith('door:')) {
+                b.components.BCD_Interact.ConsoleTag = '';
+              }
+            }
+          }
+
           this.omegga.writeln(
             `Bricks.ClearRegion ${center.join(' ')} ${extent.join(
               ' '
             )} ${ownerId}`
           );
 
-          await this.omegga.loadSaveData(doorData, { quiet: true });
+          // if the door doesn't have destruction enabled (like most doors do), load the next door state
+          if (!state.flags.destruction)
+            await this.omegga.loadSaveData(doorData, { quiet: true });
           cleanup();
         } catch (err) {
           console.error(
@@ -344,9 +603,13 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
     });
 
     return {
-      registeredCommands: ['door', DEBUG_MODE && 'g', DEBUG_MODE && 'o'].filter(
-        Boolean
-      ) as string[],
+      registeredCommands: [
+        this.config['allow-password'] && 'doorpass',
+        this.config['allow-triggers'] && 'doortrigger',
+        'door',
+        DEBUG_MODE && 'g',
+        DEBUG_MODE && 'o',
+      ].filter(Boolean) as string[],
     };
   }
 

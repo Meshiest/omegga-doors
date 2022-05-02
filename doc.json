@@ -2,6 +2,127 @@
   "name": "doors",
   "description": "A typed safe Omegga plugin.",
   "author": "cake",
-  "config": {},
-  "commands": []
+  "config": {
+    "create-only-authorized": {
+      "description": "When enabled, only authorized users and users with authorized roles can create doors and doors pasted by authorized users will not work.",
+      "type": "boolean",
+      "default": false
+    },
+    "use-only-authorized": {
+      "description": "When enabled, only authorized users and users with authorized roles can use doors",
+      "type": "boolean",
+      "default": false
+    },
+    "authorized-users": {
+      "description": "Users who are authorized to create/use doors",
+      "default": [],
+      "type": "players"
+    },
+    "authorized-role": {
+      "description": "The role that allows users to create/use doors",
+      "default": "Moderator",
+      "type": "role"
+    },
+    "allow-one-way": {
+      "description": "Allow creation and usage of one-way doors (can only be opened)",
+      "type": "boolean",
+      "default": true
+    },
+    "allow-destruction": {
+      "description": "Allow creation and usage of doors that delete their own bricks",
+      "type": "boolean",
+      "default": true
+    },
+    "allow-private": {
+      "description": "Allow creation and usage of private doors (can only be opened/closed by owner)",
+      "type": "boolean",
+      "default": true
+    },
+    "allow-password": {
+      "description": "Allow creation and usage of passworded doors (can only be opened/closed by pin)",
+      "type": "boolean",
+      "default": true
+    },
+    "allow-disabled": {
+      "description": "Allow creation and usage of doors that cannot be interacted with",
+      "type": "boolean",
+      "default": true
+    },
+    "allow-triggers": {
+      "description": "Allow creation and usage of triggers that open doors remotely",
+      "type": "boolean",
+      "default": true
+    },
+    "authorized-unlock": {
+      "description": "Allow locked and private doors to be opened by authorized users and roles",
+      "type": "boolean",
+      "default": false
+    },
+    "anti-spam-throttle": {
+      "description": "The minimum number of milliseconds allowed between clicks. First click is instant, successive clicks are delayed this amount of time.",
+      "default": 150,
+      "type": "number"
+    },
+    "max-door-bricks": {
+      "description": "The max allowed number of bricks in a door. Applies to creation, usage, and triggers.",
+      "default": 100,
+      "type": "number"
+    },
+    "max-door-size": {
+      "description": "The max allowed size of doors (in studs). Hard limit is 6553 studs. Applies to creation, usage, and trigger size.",
+      "default": 20,
+      "type": "number"
+    },
+    "max-door-shift": {
+      "description": "The max allowed distance doors can shift (in studs). Hard limit is 6553 studs. Applies to creation, usage, and trigger distance.",
+      "default": 50,
+      "type": "number"
+    }
+  },
+  "commands": [
+    {
+      "name": "/door",
+      "description": "Creates a door out of selected bricks that opens into the position of the player's template bricks.",
+      "example": "/door pin:1234abc private oneway destruction disabled",
+      "args": [
+        {
+          "name": "private",
+          "description": "When provided, this door can only be opened by you. If configured, authorized users can open this door.",
+          "required": false
+        },
+        {
+          "name": "oneway",
+          "description": "When provided, this door can only be opened once and never closed.",
+          "required": false
+        },
+        {
+          "name": "destruction",
+          "description": "When provided, this door deletes its bricks instead of opens.",
+          "required": false
+        },
+        {
+          "name": "pin",
+          "description": "When provided, encrypts the door with the pin. Authorized users still need a pin to open this.",
+          "required": false
+        },
+        {
+          "name": "disabled",
+          "description": "When provided, this door cannot be opened by clicking, only triggers.",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "/doorpass",
+      "description": "Enters a password for unlocking doors. Does not set password when creating doors.",
+      "example": "/doorpass p4ssw0rd",
+      "args": [
+        {
+          "name": "password",
+          "description": "The password to be used on the door",
+          "required": true
+        }
+      ]
+    }
+  ]
 }
