@@ -1,6 +1,6 @@
 {
   "name": "doors",
-  "description": "A typed safe Omegga plugin.",
+  "description": "Provides doors/moving two state systems to your server",
   "author": "cake",
   "config": {
     "create-only-authorized": {

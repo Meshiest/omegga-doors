@@ -137,6 +137,17 @@ export function validateDoorBrick(
   state: DoorState,
   ownerId: string
 ): boolean {
+  if (
+    config['create-only-authorized'] &&
+    !isAuthorized(config, ownerId, 'create')
+  ) {
+    Omegga.middlePrint(
+      player,
+      `This door was built by someone who does not have permission to create doors.`
+    );
+    return false;
+  }
+
   if (state.flags.private) {
     // check if private doors are enabled
     if (!config['allow-private']) {
@@ -156,10 +167,13 @@ export function validateDoorBrick(
   return true;
 }
 
-/** lookup a brick by position and filter fn */
+/** lookup a brick by position and filter fn
+ * @param unique when enabled, require this door to be unique
+ */
 export async function getDoorBrickQuery(
   region: { center: Vector; extent: Vector },
-  query: (brick: Brick) => boolean
+  query: (brick: Brick) => boolean,
+  unique?: boolean
 ): Promise<{ brick: Brick; ownerId: string }> {
   // get the save data around the clicked brick
   const saveData = await Omegga.getSaveData(region);
@@ -171,9 +185,18 @@ export async function getDoorBrickQuery(
   if (saveData.version !== 10) return null;
 
   // find brick based on query
-  const brick = saveData.bricks.find(query);
+  const index = saveData.bricks.findIndex(query);
+  const brick = index > -1 ? saveData.bricks[index] : null;
 
-  if (!brick) null;
+  // prevent multiple bricks in the same position from being clicked
+  if (
+    unique &&
+    index > -1 &&
+    saveData.bricks.some((b, i) => query(b) && i !== index)
+  )
+    return null;
+
+  if (!brick) return null;
 
   return { brick, ownerId: saveData.brick_owners[brick.owner_index - 1].id };
 }
@@ -200,7 +223,8 @@ export async function getDoorBrickFromInteract(
       center: position as Vector,
       extent: [state.brick_size, state.brick_size, state.brick_size] as Vector,
     },
-    b => b.position.every((p, i) => position[i] === p)
+    b => b.position.every((p, i) => position[i] === p),
+    true
   );
 }
 
