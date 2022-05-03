@@ -1,6 +1,7 @@
 import { BrickBounds, Vector } from 'omegga';
 import { isAuthorized } from './auth';
 import { Config } from './config';
+import { resetDoors } from './door';
 import {
   olookup,
   orientationStr,
@@ -27,33 +28,37 @@ export const getPin = (id: string) => pinCache[id];
 // regions players have selected for triggers
 const triggerRegions: Record<string, BrickBounds> = {};
 
-export const cmdDoorPass = async (name: string, password: string) => {
-  const player = Omegga.getPlayer(name);
-  if (!player) return;
-  if (!password)
-    return Omegga.whisper(
-      name,
-      'Please specify a password: /doorpass p4ssw0rd.'
-    );
-  if (password.includes(':'))
-    return Omegga.whisper(
-      name,
-      'Passwords cannot contain : because it is used in option parsing'
-    );
-  if (password.split('').some(c => c.charCodeAt(0) > 256))
-    return Omegga.whisper(name, 'Unicode is not supported in pins.');
-  if (password.length > 32)
-    return Omegga.whisper(
-      name,
-      "Pins longer than 32 characters don't add entropy."
-    );
-  Omegga.whisper(name, 'Pin has been stored.');
-  pinCache[player.id] = password.split('').map(c => c.charCodeAt(0));
-};
+export const cmdDoorPass =
+  (config: Config) => async (name: string, password: string) => {
+    const player = Omegga.getPlayer(name);
+    if (!player) return;
+    if (!isAuthorized(config, player.id, 'use')) return;
+
+    if (!password)
+      return Omegga.whisper(
+        name,
+        'Please specify a password: /doorpass p4ssw0rd.'
+      );
+    if (password.includes(':'))
+      return Omegga.whisper(
+        name,
+        'Passwords cannot contain : because it is used in option parsing'
+      );
+    if (password.split('').some(c => c.charCodeAt(0) > 256))
+      return Omegga.whisper(name, 'Unicode is not supported in pins.');
+    if (password.length > 32)
+      return Omegga.whisper(
+        name,
+        "Pins longer than 32 characters don't add entropy."
+      );
+    Omegga.whisper(name, 'Pin has been stored.');
+    pinCache[player.id] = password.split('').map(c => c.charCodeAt(0));
+  };
 
 export const cmdDoorRegion = (config: Config) => async (name: string) => {
   const player = Omegga.getPlayer(name);
   if (!player) return;
+  if (!isAuthorized(config, player.id, 'create')) return;
 
   const bounds = await getTriggerBounds(player, config);
   if (!bounds) return;
@@ -64,9 +69,29 @@ export const cmdDoorRegion = (config: Config) => async (name: string) => {
   triggerRegions[player.id] = bounds;
 };
 
+export const cmdResetDoors = (config: Config) => async (name: string) => {
+  const player = Omegga.getPlayer(name);
+  if (!player) return;
+  if (!isAuthorized(config, player.id)) return;
+
+  try {
+    Omegga.broadcast(`<b>${name}</> is resetting doors...`);
+    const data = await Omegga.getSaveData();
+    if (data.bricks.length === 0 || data.version !== 10) {
+      return;
+    }
+    const count = await resetDoors(data);
+    Omegga.broadcast(`<b>${count}</> doors were reset`);
+  } catch (err) {
+    console.error('error resetting all doors', err);
+    Omegga.broadcast(`Error resetting doors (${name})`);
+  }
+};
+
 export const cmdDoorTrigger = (config: Config) => async (name: string) => {
   const player = Omegga.getPlayer(name);
   if (!player) return;
+  if (!isAuthorized(config, player.id, 'create')) return;
 
   const bounds = triggerRegions[player.id];
   if (!bounds) {
@@ -155,6 +180,11 @@ export const cmdDoor =
             if (!config['allow-disabled'])
               throw 'Disabled doors are ...disabled lol?';
             options.disabled = true;
+            break;
+          case 'resettable':
+            if (!config['allow-resettable'])
+              throw 'Resettable doors are disabled';
+            options.resettable = true;
             break;
           case 'password':
           case 'pin':

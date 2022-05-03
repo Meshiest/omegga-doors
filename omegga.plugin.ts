@@ -1,4 +1,4 @@
-import OmeggaPlugin, { Brick, OL, PC, PS } from 'omegga';
+import OmeggaPlugin, { Brick, OL, PC, PS, ReadSaveObject } from 'omegga';
 import {
   checkActiveDoor,
   handleAntispam,
@@ -10,9 +10,11 @@ import {
   cmdDoorPass,
   cmdDoorRegion,
   cmdDoorTrigger,
+  cmdResetDoors,
   initDebugCommands,
 } from 'src/commands';
 import { Config } from 'src/config';
+import { resetDoors } from 'src/door';
 import {
   activateDoor,
   getDoorBrickFromInteract,
@@ -48,7 +50,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
     if (this.config['allow-password']) {
       // door password
-      this.omegga.on('cmd:doorpass', cmdDoorPass);
+      this.omegga.on('cmd:doorpass', cmdDoorPass(this.config));
     }
 
     if (this.config['allow-triggers']) {
@@ -56,6 +58,11 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
       this.omegga.on('cmd:doorregion', cmdDoorRegion(this.config));
       // trigger creation
       this.omegga.on('cmd:doortrigger', cmdDoorTrigger(this.config));
+    }
+
+    if (this.config['allow-resettable']) {
+      // reset doors feature
+      this.omegga.on('cmd:resetdoors', cmdResetDoors(this.config));
     }
 
     // command for getting a door setup
@@ -105,14 +112,14 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           }
 
           doorMatch = parseDoorConsoleTag(
-            this.config,
             scannedBrick.brick.components.BCD_Interact.ConsoleTag,
+            this.config,
             player
           );
 
           // otherwise parse the door message
         } else if (
-          (doorMatch = parseDoorConsoleTag(this.config, message, player))
+          (doorMatch = parseDoorConsoleTag(message, this.config, player))
         ) {
           // antispam handling
           await handleAntispam(player.id);
@@ -160,7 +167,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
             }
 
             // activate the door
-            await activateDoor(player, brick, ownerId, open, state);
+            await activateDoor(brick, ownerId, open, state);
           } catch (err) {
             console.error(
               'error interacting with brick',
@@ -179,11 +186,58 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
         this.config['allow-password'] && 'doorpass',
         this.config['allow-triggers'] && 'doorregion',
         this.config['allow-triggers'] && 'doortrigger',
+        this.config['allow-resettable'] && 'resetdoors',
         'door',
         DEBUG_MODE && 'g',
         DEBUG_MODE && 'o',
       ].filter(Boolean) as string[],
     };
+  }
+
+  async pluginEvent(
+    event: string,
+    from: string,
+    file?: string
+  ): Promise<number> {
+    let data: ReadSaveObject;
+
+    try {
+      switch (event) {
+        case 'reset:file':
+          if (!this.omegga.getSavePath(file)) {
+            console.warn(
+              '[interop]',
+              from,
+              `told me to read a save that does not exist (${file})`
+            );
+            return -1;
+          }
+          data = this.omegga.readSaveData(file);
+          if (data.version !== 10) {
+            console.warn(
+              '[interop]',
+              from,
+              'told me to read save older than brs v10'
+            );
+            return -1;
+          }
+
+          if (data.brick_count === 0) return 0;
+
+          console.info('[interop]', from, 'resetting all doors');
+          return resetDoors(data);
+
+        case 'reset:save':
+          data = await Omegga.getSaveData();
+          if (data.bricks.length === 0 || data.version !== 10) {
+            return 0;
+          }
+
+          return await resetDoors(data);
+      }
+    } catch (err) {
+      console.error('error in plugin interop', event, from, err);
+    }
   }
 
   async stop() {

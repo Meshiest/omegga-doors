@@ -4,7 +4,7 @@ import { Config } from './config';
 export const isAuthorized = (
   config: Config,
   playerId: string,
-  mode: 'use' | 'create'
+  mode?: 'use' | 'create'
 ) => {
   const hasRole = () =>
     Player.getRoles(Omegga, playerId).includes(config['authorized-role']);
@@ -14,6 +14,7 @@ export const isAuthorized = (
     (mode === 'create' &&
       (!config['create-only-authorized'] || hasRole() || isAuthorizedUser())) ||
     (mode === 'use' &&
-      (!config['use-only-authorized'] || hasRole() || isAuthorizedUser()))
+      (!config['use-only-authorized'] || hasRole() || isAuthorizedUser())) ||
+    (!mode && (hasRole() || isAuthorizedUser()))
   );
 };

@@ -1,4 +1,5 @@
-import { Brick, Vector } from 'omegga';
+import { Brick, IBrickBounds, ReadSaveObject, Vector } from 'omegga';
+import { activateDoor, parseDoorConsoleTag } from './interact';
 import {
   odiff,
   oinvert,
@@ -16,6 +17,7 @@ const {
   BRICK_CONSTANTS: { translationTable },
   d2o,
   o2d,
+  checkBounds,
   rotate: rotateBrick,
 } = OMEGGA_UTIL.brick;
 
@@ -171,4 +173,56 @@ export function toggleDoorState(
     doorRotation,
     bricks
   );
+}
+
+export async function resetDoors(
+  data: ReadSaveObject & {
+    version: 10;
+    bricks: (Brick & { _used?: boolean })[];
+  }
+) {
+  const { bricks, brick_owners } = data;
+
+  const doors = new Set<string>();
+  let count = 0;
+
+  for (const brick of bricks) {
+    if (brick.components.BCD_Interact?.ConsoleTag) {
+      const parsed = parseDoorConsoleTag(
+        brick.components.BCD_Interact?.ConsoleTag
+      );
+
+      if (!parsed) continue;
+
+      const { state, open } = parsed;
+      if (state.flags.resettable)
+        console.debug(
+          '[debug] detected door',
+          state?.flags.resettable,
+          state.center,
+          open
+        );
+
+      // only open and resettable doors will be reset
+      if (!open || !state.flags.resettable) continue;
+
+      const region = getDoorSelection(state, brick);
+      const key = region.center.join(',');
+
+      // if the door hasn't been seen, add it to the list of doors
+      if (!doors.has(key)) {
+        await activateDoor(
+          brick,
+          brick_owners[brick.owner_index - 1].id,
+          true,
+          state
+        );
+        count++;
+
+        doors.add(key);
+      }
+    }
+  }
+
+  return count;
 }

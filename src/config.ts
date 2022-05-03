@@ -9,6 +9,7 @@ export type Config = {
   'allow-password': boolean;
   'allow-disabled': boolean;
   'allow-triggers': boolean;
+  'allow-resettable': boolean;
   'authorized-unlock': boolean;
   'anti-spam-throttle': number;
   'max-door-bricks': number;

@@ -53,6 +53,11 @@
       "type": "boolean",
       "default": true
     },
+    "allow-resettable": {
+      "description": "Allow creation and usage of doors that can be reset via command or plugin interop",
+      "type": "boolean",
+      "default": true
+    },
     "authorized-unlock": {
       "description": "Allow locked and private doors to be opened by authorized users and roles",
       "type": "boolean",
@@ -109,6 +114,11 @@
           "name": "disabled",
           "description": "When provided, this door cannot be opened by clicking, only triggers.",
           "required": false
+        },
+        {
+          "name": "resettable",
+          "description": "When provided, this door can be reset via command or plugin interop.",
+          "required": false
         }
       ]
     },
@@ -134,6 +144,12 @@
       "name": "/doortrigger",
       "description": "Makes a trigger from selected bricks and /doorregion. Triggers remotely activate doors.",
       "example": "/doortrigger",
+      "args": []
+    },
+    {
+      "name": "/resetdoors",
+      "description": "Resets all doors with the reset condition. Authorized user only",
+      "example": "/resetdoors",
       "args": []
     }
   ]

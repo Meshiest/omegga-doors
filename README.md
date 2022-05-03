@@ -20,6 +20,7 @@ doors/moving bricks in brickadia for [omegga](https://github.com/brickadia-commu
   - `/door oneway` - a door that can only open, but not close
   - `/door destruction` - a door that simply clears its bricks
   - `/door disabled` - a door that can only be opened via trigger
+  - `/door resettable` - a door that can be reset by plugin interop or /resetdoors command
   - `/door password:1a2b3c4` or `/door pin:1a2b3c4` - a door that needs to be decrypted (literally) with `/doorpass 1a2b3c4` for usage. (these doors cannot be opened by config-authorized users as they are literally encrypted with the password)
   - (example) `/door private destruction` a door only you can click and clear
 
@@ -32,3 +33,14 @@ doors/moving bricks in brickadia for [omegga](https://github.com/brickadia-commu
 3. copy bricks you want to add a trigger component to
 4. `/doortrigger` will put those bricks on your clipboard with trigger components
 5. paste/place your trigger. Trigger locations are NOT relative.
+
+### Resetting doors
+
+Doors can be reset by authorized users via `/resetdoors` when `allow-resettable` is enabled.
+
+Doors can also be reset via plugin interop by emitting one of the following events:
+
+- Reset by file: `reset:file` with an argument `file` (the name of a save in the Builds folder)
+- Save and reset all: `reset:save` with no arguments
+
+Both methods will reset doors currently loaded in the world and do not modify the files.

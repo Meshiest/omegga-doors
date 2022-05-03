@@ -5,6 +5,7 @@ export type DoorOptions = Partial<{
   oneway: boolean;
   destruction: boolean;
   disabled: boolean;
+  resettable: boolean;
   pin: number[];
 }>;
 
@@ -113,6 +114,7 @@ export function readDoorStateFromBuffer(buffer: ArrayBuffer, pin?: number[]) {
         oneway: (byte & 2) > 0,
         destruction: (byte & 4) > 0,
         disabled: (byte & 8) > 0,
+        resettable: (byte & 16) > 0,
         pin,
       };
     })(),
@@ -145,7 +147,8 @@ export function writeDoorStateToBuffer(state: DoorState) {
     (state.flags?.private ? 1 : 0) |
       (state.flags?.oneway ? 2 : 0) |
       (state.flags?.destruction ? 4 : 0) |
-      (state.flags?.disabled ? 8 : 0)
+      (state.flags?.disabled ? 8 : 0) |
+      (state.flags?.resettable ? 16 : 0)
   );
 
   let parity = 0;

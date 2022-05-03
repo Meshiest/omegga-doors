@@ -8,6 +8,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 15, 30],
       shift: [10, -10, 0],
       orientation: { open: 19, self: 16 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -97,6 +98,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 15, 30],
       shift: [10, -10, 0],
       orientation: { open: 19, self: 16 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -186,6 +188,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [15, 5, 30],
       shift: [10, 10, 0],
       orientation: { open: 19, self: 17 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -275,6 +278,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 15, 30],
       shift: [10, -10, 0],
       orientation: { open: 19, self: 16 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -364,6 +368,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 15, 30],
       shift: [10, -10, 0],
       orientation: { open: 19, self: 16 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -453,6 +458,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 15, 30],
       shift: [10, -10, 0],
       orientation: { open: 19, self: 16 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -544,6 +550,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 10, 6],
       shift: [5, -5, 0],
       orientation: { open: 19, self: 19 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -585,6 +592,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 10, 6],
       shift: [5, -5, 0],
       orientation: { open: 19, self: 19 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -626,6 +634,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 10, 6],
       shift: [5, -5, 0],
       orientation: { open: 19, self: 19 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -667,6 +676,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 10, 6],
       shift: [5, -5, 0],
       orientation: { open: 19, self: 19 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -708,6 +718,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [5, 10, 6],
       shift: [5, -5, 0],
       orientation: { open: 19, self: 19 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -750,6 +761,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [30, 15, 5],
       shift: [0, -10, -10],
       orientation: { open: 19, self: 2 },
+      flags: {},
     },
     closed: {
       clickedBrick: {
@@ -819,6 +831,7 @@ export const doorTests: Record<string, DoorTest> = {
       extent: [15, 30, 5],
       shift: [10, 0, -10],
       orientation: { open: 19, self: 10 },
+      flags: {},
     },
     closed: {
       clickedBrick: {

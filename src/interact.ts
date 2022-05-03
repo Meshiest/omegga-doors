@@ -20,9 +20,9 @@ export const INTERACT_TRIGGER_PATTERN =
 
 /** get door state from console tag */
 export function parseDoorConsoleTag(
-  config: Config,
   message: string,
-  player: OmeggaPlayer
+  config?: Config,
+  player?: OmeggaPlayer
 ): { open: boolean; state: DoorState } {
   const match = message.match(INTERACT_DOOR_PATTERN);
   if (!match) return null;
@@ -30,17 +30,18 @@ export function parseDoorConsoleTag(
   const open = match.groups.open === 'o';
 
   const state =
-    (hasPin(player.id)
+    (player && hasPin(player.id)
       ? decodeDoorState(match.groups.base64, getPin(player.id))
       : null) ?? decodeDoorState(match.groups.base64);
 
   if (!state) {
-    Omegga.whisper(
-      player,
-      `Unable to decode door data. Door could be encrypted${
-        config['allow-password'] ? ' (<code>/doorpass p4ssw0rd</>)' : ''
-      } or could be from an outdated plugin.`
-    );
+    if (player && config)
+      Omegga.whisper(
+        player,
+        `Unable to decode door data. Door could be encrypted${
+          config['allow-password'] ? ' (<code>/doorpass p4ssw0rd</>)' : ''
+        } or could be from an outdated plugin.`
+      );
 
     return null;
   }
@@ -230,7 +231,6 @@ export async function getDoorBrickFromInteract(
 
 /** trigger a door from a brick and state */
 export async function activateDoor(
-  player: OmeggaPlayer,
   brick: Brick,
   ownerId: string,
   open: boolean,
@@ -261,7 +261,6 @@ export async function activateDoor(
       cleanupActiveDoor(activeDoorRegion);
       return console.warn(
         '[interact] error finding door bricks at center:',
-        player.name,
         center.join(', '),
         'extent:',
         extent.join(', ')
@@ -292,7 +291,7 @@ export async function activateDoor(
 
     cleanupActiveDoor(activeDoorRegion);
   } catch (err) {
-    console.error('error activating door', player, err);
+    console.error('error activating door', err);
     cleanupActiveDoor(activeDoorRegion);
   }
 }
