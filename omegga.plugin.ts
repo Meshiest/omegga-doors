@@ -23,7 +23,7 @@ import {
   validateDoorState,
   validateTriggerState,
 } from 'src/interact';
-import 'src/test';
+// import 'src/test';
 
 type Storage = {};
 
