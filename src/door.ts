@@ -195,13 +195,6 @@ export async function resetDoors(
       if (!parsed) continue;
 
       const { state, open } = parsed;
-      if (state.flags.resettable)
-        console.debug(
-          '[debug] detected door',
-          state?.flags.resettable,
-          state.center,
-          open
-        );
 
       // only open and resettable doors will be reset
       if (!open || !state.flags.resettable) continue;
