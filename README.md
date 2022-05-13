@@ -21,6 +21,7 @@ doors/moving bricks in brickadia for [omegga](https://github.com/brickadia-commu
   - `/door destruction` - a door that simply clears its bricks
   - `/door disabled` - a door that can only be opened via trigger
   - `/door resettable` - a door that can be reset by plugin interop or /resetdoors command
+  - `/door unclosable` - a door that only opens (you can make circles)
   - `/door password:1a2b3c4` or `/door pin:1a2b3c4` - a door that needs to be decrypted (literally) with `/doorpass 1a2b3c4` for usage. (these doors cannot be opened by config-authorized users as they are literally encrypted with the password)
   - (example) `/door private destruction` a door only you can click and clear
 
@@ -32,7 +33,7 @@ doors/moving bricks in brickadia for [omegga](https://github.com/brickadia-commu
 2. `/doorregion` will store the region you have selected in memory
 3. copy bricks you want to add a trigger component to
 4. `/doortrigger` will put those bricks on your clipboard with trigger components
-5. paste/place your trigger. Trigger locations are NOT relative.
+5. paste/place your trigger. Trigger locations are NOT relative unless you use `/doortrigger relative` and orientation is not preserved.
 
 ### Resetting doors
 
