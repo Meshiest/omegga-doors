@@ -58,6 +58,11 @@
       "type": "boolean",
       "default": true
     },
+    "allow-unclosable": {
+      "description": "Allow creation and usage of doors that only open (rotate on click)",
+      "type": "boolean",
+      "default": true
+    },
     "authorized-unlock": {
       "description": "Allow locked and private doors to be opened by authorized users and roles",
       "type": "boolean",

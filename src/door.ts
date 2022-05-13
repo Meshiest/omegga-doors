@@ -67,7 +67,8 @@ export function moveDoorBricks(
   center: Vector,
   shift: Vector,
   orientation: number,
-  bricks: Brick[]
+  bricks: Brick[],
+  noComponent?: boolean
 ): Brick[] {
   const direction = o2d(orientation) as [number, number];
 
@@ -85,6 +86,7 @@ export function moveDoorBricks(
 
     // update the component
     if (
+      !noComponent &&
       brick.components?.BCD_Interact &&
       brick.components?.BCD_Interact.ConsoleTag?.startsWith('door:')
     ) {
@@ -171,7 +173,8 @@ export function toggleDoorState(
     center,
     vecScale(shift, open ? -1 : 1),
     doorRotation,
-    bricks
+    bricks,
+    state.flags.unclosable
   );
 }
 

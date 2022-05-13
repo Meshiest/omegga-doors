@@ -186,6 +186,11 @@ export const cmdDoor =
               throw 'Resettable doors are disabled';
             options.resettable = true;
             break;
+          case 'unclosable':
+            if (!config['allow-unclosable'])
+              throw 'Unclosable doors are disabled';
+            options.unclosable = true;
+            break;
           case 'password':
           case 'pin':
             if (!config['allow-password'])
