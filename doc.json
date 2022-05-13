@@ -149,7 +149,13 @@
       "name": "/doortrigger",
       "description": "Makes a trigger from selected bricks and /doorregion. Triggers remotely activate doors.",
       "example": "/doortrigger",
-      "args": []
+      "args": [
+        {
+          "name": "relative",
+          "description": "Makes the trigger contain relative positional information",
+          "required": false
+        }
+      ]
     },
     {
       "name": "/resetdoors",

@@ -16,7 +16,7 @@ export const INTERACT_DOOR_PATTERN =
   /^door:(?<open>[oc]):(?<base64>(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?)$/;
 
 export const INTERACT_TRIGGER_PATTERN =
-  /^door:t:(?<x>-?\d+),(?<y>-?\d+),(?<z>-?\d+)\|(?<ex>\d+),(?<ey>\d+),(?<ez>\d+)$/;
+  /^door:t:(?<relX>~)?(?<x>-?\d+),(?<relY>~)?(?<y>-?\d+),(?<relZ>~)?(?<z>-?\d+)\|(?<ex>\d+),(?<ey>\d+),(?<ez>\d+)$/;
 
 /** get door state from console tag */
 export function parseDoorConsoleTag(
@@ -49,15 +49,15 @@ export function parseDoorConsoleTag(
 }
 
 /** get center/region from trigger console tag */
-export function parseTriggerConsoleTag(message: string) {
+export function parseTriggerConsoleTag(message: string, position: Vector) {
   const match = message.match(INTERACT_TRIGGER_PATTERN);
   if (!match) return null;
 
   return {
     center: [
-      Number(match.groups.x),
-      Number(match.groups.y),
-      Number(match.groups.z),
+      Number(match.groups.x) + (match.groups.relX ? position[0] : 0),
+      Number(match.groups.y) + (match.groups.relY ? position[1] : 0),
+      Number(match.groups.z) + (match.groups.relZ ? position[2] : 0),
     ] as Vector,
     extent: [
       Number(match.groups.ex),

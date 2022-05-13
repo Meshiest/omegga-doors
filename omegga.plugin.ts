@@ -86,7 +86,7 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
         if (message.length === 0) return;
 
         const triggerMatch = this.config['allow-triggers']
-          ? parseTriggerConsoleTag(message)
+          ? parseTriggerConsoleTag(message, position)
           : null;
 
         let doorMatch: ReturnType<typeof parseDoorConsoleTag>;

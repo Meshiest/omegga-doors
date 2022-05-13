@@ -88,69 +88,102 @@ export const cmdResetDoors = (config: Config) => async (name: string) => {
   }
 };
 
-export const cmdDoorTrigger = (config: Config) => async (name: string) => {
-  const player = Omegga.getPlayer(name);
-  if (!player) return;
-  if (!isAuthorized(config, player.id, 'create')) return;
+export const cmdDoorTrigger =
+  (config: Config) =>
+  async (name: string, ...args) => {
+    const relative = args.includes('relative');
 
-  const bounds = triggerRegions[player.id];
-  if (!bounds) {
-    Omegga.whisper(
-      player,
-      'No door region selected. Copy some bricks and run <code>/doorregion</> to specify a door to trigger.'
+    const player = Omegga.getPlayer(name);
+    if (!player) return;
+    if (!isAuthorized(config, player.id, 'create')) return;
+
+    const bounds = triggerRegions[player.id];
+    if (!bounds) {
+      Omegga.whisper(
+        player,
+        'No door region selected. Copy some bricks and run <code>/doorregion</> to specify a door to trigger.'
+      );
+      return;
+    }
+
+    const [templateBounds, data] = await Promise.all([
+      relative ? player.getTemplateBounds() : null,
+      player.getTemplateBoundsData(),
+    ]);
+
+    if (!data || data.brick_count === 0 || (relative && !templateBounds)) {
+      Omegga.whisper(
+        player,
+        'No selected bricks. Copy some bricks to use as your trigger.'
+      );
+      return;
+    }
+
+    if (data.brick_count > config['max-door-bricks']) {
+      Omegga.whisper(
+        player,
+        `This trigger contains more bricks than allowed (${config['max-door-bricks']})`
+      );
+      return;
+    }
+
+    if (data.version !== 10) {
+      Omegga.whisper(player, 'Unsupported BRS version');
+      return;
+    }
+
+    const extent = vecAbs(
+      vecScale(vecSub(bounds.maxBound, bounds.minBound), 0.5)
     );
-    return;
-  }
 
-  const data = await player.getTemplateBoundsData();
+    delete data.components;
+    for (const brick of data.bricks) {
+      if (
+        relative &&
+        data.brick_owners[brick.owner_index - 1].id !== player.id
+      ) {
+        Omegga.whisper(
+          player,
+          "You cannot create relative triggers on other players' bricks."
+        );
+        return;
+      }
+      brick.components.BCD_Interact ??= {
+        bPlayInteractSound: false,
+        Message: '',
+        ConsoleTag: '',
+      };
 
-  if (!data || data.brick_count === 0) {
-    Omegga.whisper(
-      player,
-      'No selected bricks. Copy some bricks to use as your trigger.'
-    );
-    return;
-  }
+      // door:t:x,y,z|ex,ey,ez
+      // door:t:~x,~y,~z|ex,ey,ez
+      // may need to encode this into bytes to store data for long range triggers
+      // but whatever
+      brick.components.BCD_Interact.ConsoleTag = `door:t:${(relative
+        ? vecSub(bounds.center, brick.position).map(p => '~' + p)
+        : bounds.center
+      ).join(',')}|${extent.join(',')}`;
+    }
 
-  if (data.brick_count > config['max-door-bricks']) {
-    Omegga.whisper(
-      player,
-      `This trigger contains more bricks than allowed (${config['max-door-bricks']})`
-    );
-    return;
-  }
-
-  if (data.version !== 10) {
-    Omegga.whisper(player, 'Unsupported BRS version');
-    return;
-  }
-
-  const extent = vecAbs(
-    vecScale(vecSub(bounds.maxBound, bounds.minBound), 0.5)
-  );
-
-  delete data.components;
-  for (const brick of data.bricks) {
-    brick.components.BCD_Interact ??= {
-      bPlayInteractSound: false,
-      Message: '',
-      ConsoleTag: '',
-    };
-
-    // door:t:x,y,z|ex,ey,ez
-    // may need to encode this into bytes to store data for long range triggers
-    // but whatever
-    brick.components.BCD_Interact.ConsoleTag = `door:t:${bounds.center.join(
-      ','
-    )}|${extent.join(',')}`;
-  }
-
-  await player.loadSaveData(data);
-  Omegga.whisper(
-    player,
-    'You can paste these bricks. This is a trigger template. It will open/close the first door it finds in the selected region.'
-  );
-};
+    if (relative) {
+      Omegga.clearRegion({
+        center: templateBounds.center,
+        extent: vecAbs(
+          vecSub(templateBounds.maxBound, templateBounds.minBound)
+        ),
+      });
+      Omegga.loadSaveData(data, { quiet: true });
+      Omegga.whisper(
+        player,
+        'Replaced selected bricks with relative trigger data.'
+      );
+    } else {
+      await player.loadSaveData(data);
+      Omegga.whisper(
+        player,
+        'You can paste these bricks. This is a trigger template. It will open/close the first door it finds in the selected region.'
+      );
+    }
+  };
 
 export const cmdDoor =
   (config: Config) =>
