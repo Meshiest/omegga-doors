@@ -145,7 +145,6 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
           try {
             // make sure the door config follows the config
             if (!validateDoorState(this.config, player, state)) {
-              console.debug('[debug] not valid door');
               return;
             }
 
@@ -162,7 +161,6 @@ export default class Plugin implements OmeggaPlugin<Config, Storage> {
 
             // ensure the door brick is valid
             if (!validateDoorBrick(this.config, player, state, ownerId)) {
-              console.debug('[debug] not valid', brick);
               return;
             }
 

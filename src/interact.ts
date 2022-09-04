@@ -159,7 +159,7 @@ export function validateDoorBrick(
     // check if this players is the owner or the player is authorized
     if (
       ownerId !== player.id &&
-      !(config['authorized-unlock'] && isAuthorized(config, player.id, 'use'))
+      !(config['authorized-unlock'] && isAuthorized(config, player.id))
     ) {
       Omegga.middlePrint(player, `You are not authorized to open this door.`);
       return false;
